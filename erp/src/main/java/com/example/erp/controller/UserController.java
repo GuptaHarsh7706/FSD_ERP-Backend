@@ -3,12 +3,18 @@ package com.example.erp.controller;
 import com.example.erp.entity.User;
 import com.example.erp.service.UserService;
 import jakarta.persistence.EntityNotFoundException;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,6 +23,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
+@Slf4j
 @CrossOrigin(origins = "*")
 public class UserController {
 
@@ -59,75 +66,130 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
+    @PostMapping("/first-user")
+    public ResponseEntity<?> registerFirstUser(@Valid @RequestBody User user) {
+        // Check if any users exist
+        if (userService.getUserCount() > 0) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Initial admin user already exists");
+        }
+        
+        // Set first user as ADMIN
+        user.setRole(User.UserRole.ADMIN);
+        
+        // Check for existing email
+        if (userService.existsByEmail(user.getEmail())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Email already in use");
+        }
+        
+        User createdUser = userService.createUser(user);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+    }
+    
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Valid @RequestBody User user) {
         try {
+            log.info("Received registration request for user: {}", user.getEmail());
+            
             // Check if database is empty (bootstrap case)
-            if (userService.getUserCount() == 0) {
-                // Force first user to be ADMIN for bootstrap
+            long userCount = userService.getUserCount();
+            log.debug("Current user count in database: {}", userCount);
+            
+            if (userCount == 0) {
+                log.info("No users found in database. Creating first user as ADMIN");
                 user.setRole(User.UserRole.ADMIN);
+            } else {
+                // For non-bootstrap case, check if user has ADMIN or PRINCIPAL role
+                org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                log.debug("Authentication object: {}", auth);
                 
-                // Check for existing email before attempting to create user
-                if (userService.existsByEmail(user.getEmail())) {
-                    return ResponseEntity.status(HttpStatus.CONFLICT)
-                            .body("Email already in use");
+                if (auth == null || !auth.isAuthenticated() || auth.getAuthorities() == null) {
+                    log.warn("Unauthenticated or invalid authentication object");
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .body(Collections.singletonMap("error", "Authentication required to create new users"));
                 }
                 
-                User createdUser = userService.createUser(user);
-                return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
-            }
-
-            // Normal user creation flow (when users exist)
-            // Check if user is authenticated for normal operations
-            if (SecurityContextHolder.getContext().getAuthentication() == null || 
-                SecurityContextHolder.getContext().getAuthentication().getName().equals("anonymousUser")) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body("Authentication required when users exist in the system");
-            }
-
-            // Get current user to check permissions
-            String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-            Optional<User> currentUser = userService.getUserByEmail(currentUserEmail);
-
-            if (!currentUser.isPresent()) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
-
-            // Check role-based permissions
-            User.UserRole currentRole = currentUser.get().getRole();
-            if (currentRole != User.UserRole.ADMIN && currentRole != User.UserRole.PRINCIPAL) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body("Only ADMIN or PRINCIPAL can create users");
-            }
-
-            // Default to STUDENT if no role is provided
-            if (user.getRole() == null) {
-                user.setRole(User.UserRole.STUDENT);
-            }
-
-            // Only PRINCIPAL can create FACULTY, STAFF, STUDENT users
-            // Only ADMIN can create PRINCIPAL users
-            User.UserRole targetRole = user.getRole();
-
-            if (currentRole == User.UserRole.PRINCIPAL) {
-                if (targetRole == User.UserRole.ADMIN || targetRole == User.UserRole.PRINCIPAL) {
+                log.debug("User authorities: {}", auth.getAuthorities());
+                
+                boolean isAdmin = auth.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)
+                        .peek(role -> log.debug("Checking role: {}", role))
+                        .anyMatch(role -> role.equals("ROLE_ADMIN") || role.equals("ROLE_PRINCIPAL"));
+                
+                log.info("User has admin/principal role: {}", isAdmin);
+                                
+                if (!isAdmin) {
+                    log.warn("Access denied - user does not have required admin/principal role. Roles: {}", auth.getAuthorities());
                     return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body("PRINCIPAL cannot create ADMIN or PRINCIPAL users");
+                            .body(Collections.singletonMap("error", 
+                                "Only administrators (ADMIN/PRINCIPAL) can create new users. Current roles: " + auth.getAuthorities()));
+                }
+                
+                // Get current user's role
+                String currentUserEmail = auth.getName();
+                Optional<User> currentUser = userService.getUserByEmail(currentUserEmail);
+                
+                if (!currentUser.isPresent()) {
+                    log.error("Authenticated user not found in database: {}", currentUserEmail);
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(Collections.singletonMap("error", "User not found in database"));
+                }
+                
+                User.UserRole currentRole = currentUser.get().getRole();
+                User.UserRole targetRole = user.getRole() != null ? user.getRole() : User.UserRole.STUDENT;
+                
+                // Role-based access control
+                if (currentRole == User.UserRole.PRINCIPAL) {
+                    // PRINCIPAL can only create FACULTY, STAFF, STUDENT
+                    if (targetRole == User.UserRole.ADMIN || targetRole == User.UserRole.PRINCIPAL) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                .body(Collections.singletonMap("error", 
+                                    "PRINCIPAL can only create FACULTY, STAFF, or STUDENT users"));
+                    }
+                } else if (currentRole == User.UserRole.ADMIN) {
+                    // ADMIN can create any role
+                    if (targetRole == null) {
+                        user.setRole(User.UserRole.STAFF); // Default for admin-created users
+                    }
+                } else {
+                    // Only ADMIN and PRINCIPAL can create users
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Collections.singletonMap("error", "Insufficient privileges to create users"));
+                }
+                
+                // Ensure the role is set
+                if (user.getRole() == null) {
+                    user.setRole(User.UserRole.STUDENT);
                 }
             }
-
+            
             // Check for existing email before attempting to create user
             if (userService.existsByEmail(user.getEmail())) {
+                log.warn("Registration failed - email already in use: {}", user.getEmail());
                 return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body("Email already in use");
+                        .body(Collections.singletonMap("error", "Email already in use"));
             }
-
+            
+            log.info("Creating new user with email: {}, role: {}", user.getEmail(), user.getRole());
             User createdUser = userService.createUser(user);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+            log.info("Successfully created user with ID: {}", createdUser.getUserId());
+            
+            // Return a clean response with only necessary user details
+            Map<String, Object> response = new HashMap<>();
+            response.put("userId", createdUser.getUserId());
+            response.put("email", createdUser.getEmail());
+            response.put("name", createdUser.getName());
+            response.put("role", createdUser.getRole());
+            response.put("message", "User registered successfully");
+            
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest()
-                    .body("Error creating user: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Error in registerUser: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("error", "An error occurred while processing your request: " + e.getMessage()));
         }
     }
 

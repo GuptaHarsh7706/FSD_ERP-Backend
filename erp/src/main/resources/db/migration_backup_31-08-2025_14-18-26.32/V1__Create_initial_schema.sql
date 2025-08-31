@@ -1,7 +1,7 @@
 -- Create initial schema for College ERP System
 -- Based on the provided ER diagram
 
--- Create users table without department_id foreign key first
+-- Create user table
 CREATE TABLE users (
     user_id BIGSERIAL PRIMARY KEY,
     department_id BIGINT,
@@ -14,15 +14,7 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create department table without head_id foreign key first
-CREATE TABLE department (
-    id BIGSERIAL PRIMARY KEY,
-    head_id BIGINT,
-    name VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Now create faculty table
+-- Create faculty table
 CREATE TABLE faculty (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
@@ -30,18 +22,18 @@ CREATE TABLE faculty (
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
--- Add the foreign key constraints with DEFERRABLE to handle circular references
-ALTER TABLE users 
-    ADD CONSTRAINT fk_user_department 
-    FOREIGN KEY (department_id) 
-    REFERENCES department(id)
-    DEFERRABLE INITIALLY DEFERRED;
+-- Create department table
+CREATE TABLE department (
+    id BIGSERIAL PRIMARY KEY,
+    head_id BIGINT,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (head_id) REFERENCES faculty(id)
+);
 
-ALTER TABLE department
-    ADD CONSTRAINT fk_department_head
-    FOREIGN KEY (head_id)
-    REFERENCES faculty(id)
-    DEFERRABLE INITIALLY DEFERRED;
+-- Add foreign key constraint to users table for department
+ALTER TABLE users ADD CONSTRAINT fk_user_department 
+    FOREIGN KEY (department_id) REFERENCES department(id);
 
 -- Create student table
 CREATE TABLE student (

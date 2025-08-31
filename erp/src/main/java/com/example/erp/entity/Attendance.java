@@ -28,7 +28,7 @@ public class Attendance {
     private LocalDate date;
     
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "VARCHAR(20) DEFAULT 'PRESENT'")
+    @Column(nullable = false, length = 20)
     private AttendanceStatus status = AttendanceStatus.PRESENT;
     
     // Relationships

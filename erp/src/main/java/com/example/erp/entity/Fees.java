@@ -32,7 +32,7 @@ public class Fees {
     private LocalDate dueDate;
     
     @Enumerated(EnumType.STRING)
-    @Column(name = "payment_status", columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")
+    @Column(name = "payment_status", nullable = false, length = 20)
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
     
     // Relationships
