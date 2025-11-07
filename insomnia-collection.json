@@ -1,0 +1,181 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2025-01-06T16:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "req_create_first_user",
+      "parentId": "fld_auth",
+      "modified": 1704556800000,
+      "created": 1704556800000,
+      "url": "http://localhost:8090/api/users/first-user",
+      "name": "1. Create First User (Admin)",
+      "description": "Creates the first admin user in the system",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Admin User\",\n  \"email\": \"admin@college.edu\",\n  \"phoneNumber\": \"1234567890\",\n  \"password\": \"admin12345\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704556800000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_register_user",
+      "parentId": "fld_auth",
+      "modified": 1704556800000,
+      "created": 1704556800000,
+      "url": "http://localhost:8090/api/users/register",
+      "name": "2. Register User (Alternative)",
+      "description": "Alternative registration endpoint",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Admin User\",\n  \"email\": \"admin@college.edu\",\n  \"phoneNumber\": \"1234567890\",\n  \"password\": \"admin12345\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704556700000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_login",
+      "parentId": "fld_auth",
+      "modified": 1704556800000,
+      "created": 1704556800000,
+      "url": "http://localhost:8090/api/auth/login",
+      "name": "3. Login",
+      "description": "Login to get JWT token",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"admin@college.edu\",\n  \"password\": \"admin12345\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704556600000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_root",
+      "parentId": "fld_test",
+      "modified": 1704556800000,
+      "created": 1704556800000,
+      "url": "http://localhost:8090/",
+      "name": "Root Endpoint",
+      "description": "Test if server is running",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1704556500000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_health",
+      "parentId": "fld_test",
+      "modified": 1704556800000,
+      "created": 1704556800000,
+      "url": "http://localhost:8090/actuator/health",
+      "name": "Health Check",
+      "description": "Check application health",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1704556400000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_auth",
+      "parentId": "wrk_main",
+      "modified": 1704556800000,
+      "created": 1704556800000,
+      "name": "Authentication",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1704556800000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_test",
+      "parentId": "wrk_main",
+      "modified": 1704556800000,
+      "created": 1704556800000,
+      "name": "Test Endpoints",
+      "description": "",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1704556700000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "wrk_main",
+      "parentId": null,
+      "modified": 1704556800000,
+      "created": 1704556800000,
+      "name": "College ERP Backend",
+      "description": "College ERP System API",
+      "scope": "collection",
+      "_type": "workspace"
+    }
+  ]
+}
